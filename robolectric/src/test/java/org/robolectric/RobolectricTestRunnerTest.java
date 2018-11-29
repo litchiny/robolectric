@@ -101,7 +101,7 @@ public class RobolectricTestRunnerTest {
   public void failureInResetterDoesntBreakAllTests() throws Exception {
     RobolectricTestRunner runner =
         new MyRobolectricTestRunner(TestWithTwoMethods.class) {
-          @Override
+          // @Override
           ParallelUniverseInterface getHooksInterface(SdkEnvironment sdkEnvironment) {
             Class<? extends ParallelUniverseInterface> clazz =
                 sdkEnvironment.bootstrappedClass(MyParallelUniverseWithFailingSetUp.class);
