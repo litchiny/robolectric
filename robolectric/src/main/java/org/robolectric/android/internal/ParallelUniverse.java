@@ -3,7 +3,6 @@ package org.robolectric.android.internal;
 import static android.location.LocationManager.GPS_PROVIDER;
 import static android.os.Build.VERSION_CODES.P;
 import static org.robolectric.shadow.api.Shadow.newInstanceOf;
-import static org.robolectric.util.ReflectionHelpers.ClassParameter.from;
 import static org.robolectric.util.reflector.Reflector.reflector;
 
 import android.annotation.SuppressLint;
@@ -165,8 +164,7 @@ public class ParallelUniverse implements ParallelUniverseInterface {
     Resources systemResources = Resources.getSystem();
     systemResources.updateConfiguration(configuration, displayMetrics);
 
-    Context systemContextImpl = ReflectionHelpers.callStaticMethod(contextImplClass,
-        "createSystemContext", from(ActivityThread.class, activityThread));
+    Context systemContextImpl = reflector(_ContextImpl_.class).createSystemContext(activityThread);
     RuntimeEnvironment.systemContext = systemContextImpl;
 
     Application application = createApplication(appManifest, config);
