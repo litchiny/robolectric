@@ -76,18 +76,17 @@ import org.robolectric.util.TempDirectory;
 @SuppressLint("NewApi")
 public class ParallelUniverse implements ParallelUniverseInterface {
 
+  private final SdkConfig sdkConfig;
+  private final boolean legacyResourceMode;
+
   private boolean loggingInitialized = false;
-  private SdkConfig sdkConfig;
 
-  @Override
-  public void setSdkConfig(SdkConfig sdkConfig) {
+  public ParallelUniverse(SdkConfig sdkConfig, boolean legacyResourceMode) {
     this.sdkConfig = sdkConfig;
-    ReflectionHelpers.setStaticField(RuntimeEnvironment.class, "apiLevel", sdkConfig.getApiLevel());
-  }
+    this.legacyResourceMode = legacyResourceMode;
 
-  @Override
-  public void setResourcesMode(boolean legacyResources) {
-    RuntimeEnvironment.setUseLegacyResources(legacyResources);
+    ReflectionHelpers.setStaticField(RuntimeEnvironment.class, "apiLevel", sdkConfig.getApiLevel());
+    RuntimeEnvironment.setUseLegacyResources(legacyResourceMode);
   }
 
   @Override
@@ -467,4 +466,8 @@ public class ParallelUniverse implements ParallelUniverseInterface {
     return receiverClassName;
   }
 
+  @VisibleForTesting
+  boolean isLegacyResourceMode() {
+    return legacyResourceMode;
+  }
 }

@@ -203,6 +203,10 @@ public class RobolectricTestRunnerTest {
 
   public static class MyParallelUniverseWithFailingSetUp extends ParallelUniverse {
 
+    public MyParallelUniverseWithFailingSetUp(SdkConfig sdkConfig, boolean legacyResourceMode) {
+      super(sdkConfig, legacyResourceMode);
+    }
+
     @Override
     public void setUpApplicationState(ApkLoader apkLoader, Method method,
         Config config, AndroidManifest appManifest, SdkEnvironment environment) {

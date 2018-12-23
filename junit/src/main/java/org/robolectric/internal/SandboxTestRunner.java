@@ -232,14 +232,12 @@ public class SandboxTestRunner<T extends Sandbox> extends BlockJUnit4ClassRunner
         final ClassLoader priorContextClassLoader = Thread.currentThread().getContextClassLoader();
         Thread.currentThread().setContextClassLoader(sandbox.getRobolectricClassLoader());
 
-        //noinspection unchecked
-        Class bootstrappedTestClass = sandbox.bootstrappedClass(getTestClass().getJavaClass());
+        Class<?> bootstrappedTestClass = sandbox.bootstrappedClass(getTestClass().getJavaClass());
         HelperTestRunner helperTestRunner = getHelperTestRunner(bootstrappedTestClass);
         helperTestRunner.frameworkMethod = method;
 
         final Method bootstrappedMethod;
         try {
-          //noinspection unchecked
           bootstrappedMethod = bootstrappedTestClass.getMethod(method.getMethod().getName());
         } catch (NoSuchMethodException e) {
           throw new RuntimeException(e);
@@ -253,23 +251,43 @@ public class SandboxTestRunner<T extends Sandbox> extends BlockJUnit4ClassRunner
 
           initialization.finished();
 
-          final Statement statement = helperTestRunner.methodBlock(new FrameworkMethod(bootstrappedMethod));
+          final Statement statement =
+              helperTestRunner.methodBlock(new FrameworkMethod(bootstrappedMethod));
 
           // todo: this try/finally probably isn't right -- should mimic RunAfters? [xw]
           try {
             statement.evaluate();
           } finally {
-            afterTest(method, bootstrappedMethod);
+            // todo: consider more; failures here should still fail test right?
+            unfailingly(() ->
+                afterTest(method, bootstrappedMethod));
           }
         } finally {
           Thread.currentThread().setContextClassLoader(priorContextClassLoader);
-          finallyAfterTest(method);
 
-          reportPerfStats(perfStatsCollector);
-          perfStatsCollector.reset();
+          // todo: consider more
+          unfailingly(() ->
+              finallyAfterTest(method));
+
+          // todo: consider more
+          unfailingly(() -> {
+            reportPerfStats(perfStatsCollector);
+            perfStatsCollector.reset();
+          });
         }
       }
     };
+  }
+
+  private void unfailingly(Runnable r) {
+    try {
+      r.run();
+    } catch (Exception e) {
+      System.err.println("WARNING: an exception was thrown during test teardown:");
+      // exceptions thrown in a finally block after a failing test would obscure the
+      // original cause of the test failure...
+      e.printStackTrace();
+    }
   }
 
   private void reportPerfStats(PerfStatsCollector perfStatsCollector) {

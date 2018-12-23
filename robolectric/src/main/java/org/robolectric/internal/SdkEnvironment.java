@@ -29,6 +29,8 @@ import org.robolectric.res.ResourceTableFactory;
 @SuppressWarnings("NewApi")
 public class SdkEnvironment extends Sandbox {
   private final SdkConfig sdkConfig;
+  private final boolean useLegacyResources;
+
   private final ExecutorService executorService;
   private final ParallelUniverseInterface parallelUniverse;
   private final List<ShadowProvider> shadowProviders;
@@ -36,10 +38,12 @@ public class SdkEnvironment extends Sandbox {
   private Path compileTimeSystemResourcesFile;
   private PackageResourceTable systemResourceTable;
 
-  SdkEnvironment(SdkConfig sdkConfig, boolean useLegacyResources, ClassLoader robolectricClassLoader) {
+  protected SdkEnvironment(SdkConfig sdkConfig, boolean useLegacyResources,
+      ClassLoader robolectricClassLoader) {
     super(robolectricClassLoader);
 
     this.sdkConfig = sdkConfig;
+    this.useLegacyResources = useLegacyResources;
 
     executorService = Executors.newSingleThreadExecutor(r -> {
       Thread thread = new Thread(r,
@@ -96,24 +100,21 @@ public class SdkEnvironment extends Sandbox {
   }
 
   @SuppressWarnings("NewApi")
-  private ParallelUniverseInterface getParallelUniverse() {
+  protected ParallelUniverseInterface getParallelUniverse() {
     try {
       return bootstrappedClass(ParallelUniverse.class)
           .asSubclass(ParallelUniverseInterface.class)
-          .getConstructor()
-          .newInstance();
+          .getConstructor(SdkConfig.class, boolean.class)
+          .newInstance(sdkConfig, useLegacyResources);
     } catch (ReflectiveOperationException e) {
       throw new RuntimeException(e);
     }
   }
 
-  public <V> V executeSynchronously(Runnable runnable) {
-    Future<V> future = executorService.submit(() -> {
-      runnable.run();
-      return null;
-    });
+  public void executeSynchronously(Runnable runnable) {
+    Future<?> future = executorService.submit(runnable);
     try {
-      return future.get();
+      future.get();
     } catch (InterruptedException | ExecutionException e) {
       throw new RuntimeException(e);
     }
@@ -125,9 +126,6 @@ public class SdkEnvironment extends Sandbox {
   }
 
   public void initialize(ApkLoader apkLoader, MethodConfig methodConfig) {
-    parallelUniverse.setSdkConfig(sdkConfig);
-    parallelUniverse.setResourcesMode(methodConfig.useLegacyResources());
-
     executeSynchronously(() ->
         parallelUniverse.setUpApplicationState(
             apkLoader,
