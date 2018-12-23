@@ -550,10 +550,12 @@ public class RobolectricTestRunner extends SandboxTestRunner<SdkEnvironment> {
     }
 
     @Override protected Object createTest() throws Exception {
-      Object test = super.createTest();
       RobolectricFrameworkMethod roboMethod = (RobolectricFrameworkMethod) this.frameworkMethod;
-      roboMethod.testLifecycle.prepareTest(test);
-      return test;
+      return roboMethod.sdkEnvironment.executeSynchronously(() -> {
+        Object test = super.createTest();
+        roboMethod.testLifecycle.prepareTest(test);
+        return test;
+      });
     }
 
     @Override
