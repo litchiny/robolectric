@@ -661,11 +661,6 @@ public class RobolectricTestRunner extends SandboxTestRunner<SdkEnvironment> {
       return appManifest;
     }
 
-    @Override
-    public boolean useLegacyResources() {
-      return isLegacy();
-    }
-
     public boolean isLegacy() {
       return resourcesMode == ResourcesMode.legacy;
     }

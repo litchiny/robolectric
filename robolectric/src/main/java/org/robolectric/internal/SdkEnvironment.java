@@ -1,6 +1,8 @@
 package org.robolectric.internal;
 
+import android.annotation.SuppressLint;
 import com.google.common.collect.Lists;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.nio.file.FileSystem;
@@ -15,8 +17,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import javax.annotation.Nonnull;
 import org.robolectric.ApkLoader;
+import org.robolectric.Bridge;
 import org.robolectric.android.internal.ParallelUniverse;
 import org.robolectric.annotation.Config;
+import org.robolectric.internal.AndroidBridge.Factory;
+import org.robolectric.internal.AndroidBridge.FactoryI;
 import org.robolectric.internal.bytecode.Sandbox;
 import org.robolectric.internal.dependency.DependencyJar;
 import org.robolectric.internal.dependency.DependencyResolver;
@@ -28,11 +33,13 @@ import org.robolectric.res.ResourceTableFactory;
 
 @SuppressWarnings("NewApi")
 public class SdkEnvironment extends Sandbox {
+
   private final SdkConfig sdkConfig;
   private final boolean useLegacyResources;
 
   private final ExecutorService executorService;
   private final ParallelUniverseInterface parallelUniverse;
+  private final Bridge bridge;
   private final List<ShadowProvider> shadowProviders;
 
   private Path compileTimeSystemResourcesFile;
@@ -54,6 +61,7 @@ public class SdkEnvironment extends Sandbox {
     });
 
     parallelUniverse = getParallelUniverse();
+    bridge = getBridge();
 
     this.shadowProviders =
         Lists.newArrayList(ServiceLoader.load(ShadowProvider.class, robolectricClassLoader));
@@ -69,7 +77,8 @@ public class SdkEnvironment extends Sandbox {
     return compileTimeSystemResourcesFile;
   }
 
-  public synchronized PackageResourceTable getSystemResourceTable(DependencyResolver dependencyResolver) {
+  public synchronized PackageResourceTable getSystemResourceTable(
+      DependencyResolver dependencyResolver) {
     if (systemResourceTable == null) {
       ResourcePath resourcePath = createRuntimeSdkResourcePath(dependencyResolver);
       systemResourceTable = new ResourceTableFactory().newFrameworkResourceTable(resourcePath);
@@ -83,7 +92,10 @@ public class SdkEnvironment extends Sandbox {
       URL sdkUrl = dependencyResolver.getLocalArtifactUrl(sdkConfig.getAndroidSdkDependency());
       FileSystem zipFs = Fs.forJar(sdkUrl);
       Class<?> androidRClass = getRobolectricClassLoader().loadClass("android.R");
-      Class<?> androidInternalRClass = getRobolectricClassLoader().loadClass("com.android.internal.R");
+
+      @SuppressLint("PrivateApi")
+      Class<?> androidInternalRClass =
+          getRobolectricClassLoader().loadClass("com.android.internal.R");
       // TODO: verify these can be loaded via raw-res path
       return new ResourcePath(
           androidRClass,
@@ -97,6 +109,20 @@ public class SdkEnvironment extends Sandbox {
 
   public SdkConfig getSdkConfig() {
     return sdkConfig;
+  }
+
+  protected Bridge getBridge() {
+    try {
+      FactoryI bridgeFactory = bootstrappedClass(Factory.class)
+          .asSubclass(FactoryI.class)
+          .getConstructor()
+          .newInstance();
+
+      return bridgeFactory.build();
+    } catch (InstantiationException | NoSuchMethodException
+        | InvocationTargetException | IllegalAccessException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @SuppressWarnings("NewApi")
@@ -149,13 +175,12 @@ public class SdkEnvironment extends Sandbox {
   }
 
   public interface MethodConfig {
+
     Method getMethod();
 
     Config getConfig();
 
     AndroidManifest getAppManifest();
-
-    boolean useLegacyResources();
   }
 
 }

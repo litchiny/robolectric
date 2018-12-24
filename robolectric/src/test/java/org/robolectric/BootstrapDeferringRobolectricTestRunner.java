@@ -117,16 +117,6 @@ public class BootstrapDeferringRobolectricTestRunner extends RobolectricTestRunn
     }
 
     @Override
-    public Thread getMainThread() {
-      return delegate.getMainThread();
-    }
-
-    @Override
-    public void setMainThread(Thread newMainThread) {
-      delegate.setMainThread(newMainThread);
-    }
-
-    @Override
     public void tearDownApplication() {
       delegate.tearDownApplication();
     }

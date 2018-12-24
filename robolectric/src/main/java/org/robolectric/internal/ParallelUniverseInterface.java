@@ -12,10 +12,6 @@ public interface ParallelUniverseInterface {
       Config config, AndroidManifest appManifest,
       SdkEnvironment sdkEnvironment);
 
-  Thread getMainThread();
-
-  void setMainThread(Thread newMainThread);
-
   void tearDownApplication();
 
   Object getCurrentApplication();
