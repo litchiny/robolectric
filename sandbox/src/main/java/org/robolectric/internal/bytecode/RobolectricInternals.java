@@ -7,7 +7,7 @@ import org.robolectric.util.ReflectionHelpers;
 public class RobolectricInternals {
 
   @SuppressWarnings("UnusedDeclaration")
-  private static ClassHandler classHandler; // initialized via magic by SdkEnvironment
+  private static ClassHandler classHandler; // initialized via magic by Sandbox
 
   @SuppressWarnings("UnusedDeclaration")
   private static ShadowInvalidator shadowInvalidator;

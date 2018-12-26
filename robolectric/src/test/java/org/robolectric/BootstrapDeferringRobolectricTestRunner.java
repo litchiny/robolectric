@@ -12,10 +12,10 @@ import javax.annotation.Nonnull;
 import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.InitializationError;
 import org.robolectric.annotation.Config;
+import org.robolectric.internal.AndroidSandbox;
 import org.robolectric.internal.Bridge;
 import org.robolectric.internal.SandboxFactory;
 import org.robolectric.internal.SdkConfig;
-import org.robolectric.internal.SdkEnvironment;
 import org.robolectric.internal.bytecode.InstrumentationConfiguration;
 import org.robolectric.internal.bytecode.InstrumentationConfiguration.Builder;
 import org.robolectric.manifest.AndroidManifest;
@@ -95,7 +95,7 @@ public class BootstrapDeferringRobolectricTestRunner extends RobolectricTestRunn
     public Method method;
     public Config config;
     public AndroidManifest appManifest;
-    public SdkEnvironment sdkEnvironment;
+    public AndroidSandbox androidSandbox;
 
     public BootstrapWrapper(Bridge delegate) {
       this.delegate = delegate;
@@ -103,15 +103,15 @@ public class BootstrapDeferringRobolectricTestRunner extends RobolectricTestRunn
 
     @Override
     public void setUpApplicationState(Method method, Config config,
-        AndroidManifest appManifest, SdkEnvironment sdkEnvironment) {
+        AndroidManifest appManifest, AndroidSandbox androidSandbox) {
       this.method = method;
       this.config = config;
       this.appManifest = appManifest;
-      this.sdkEnvironment = sdkEnvironment;
+      this.androidSandbox = androidSandbox;
     }
 
     public void callSetUpApplicationState() {
-      delegate.setUpApplicationState(method, config, appManifest, sdkEnvironment);
+      delegate.setUpApplicationState(method, config, appManifest, androidSandbox);
     }
 
     @Override
@@ -128,17 +128,17 @@ public class BootstrapDeferringRobolectricTestRunner extends RobolectricTestRunn
   private static class MySandboxFactory extends SandboxFactory {
 
     @Override
-    protected SdkEnvironment createSdkEnvironment(SdkConfig sdkConfig, boolean useLegacyResources,
+    protected AndroidSandbox createSandbox(SdkConfig sdkConfig, boolean useLegacyResources,
         ClassLoader robolectricClassLoader, ApkLoader apkLoader) {
-      return new MySdkEnvironment(sdkConfig, useLegacyResources, robolectricClassLoader, apkLoader);
+      return new MyAndroidSandbox(sdkConfig, useLegacyResources, robolectricClassLoader, apkLoader);
     }
   }
 
-  private static class MySdkEnvironment extends SdkEnvironment {
+  private static class MyAndroidSandbox extends AndroidSandbox {
 
     private BootstrapWrapper myBootstrapWrapper;
 
-    MySdkEnvironment(SdkConfig sdkConfig, boolean useLegacyResources, ClassLoader classLoader,
+    MyAndroidSandbox(SdkConfig sdkConfig, boolean useLegacyResources, ClassLoader classLoader,
         ApkLoader apkLoader) {
       super(sdkConfig, useLegacyResources, classLoader, apkLoader);
     }

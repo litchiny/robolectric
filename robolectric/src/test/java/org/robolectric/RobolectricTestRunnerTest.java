@@ -39,12 +39,11 @@ import org.junit.runners.model.InitializationError;
 import org.robolectric.RobolectricTestRunner.ResourcesMode;
 import org.robolectric.RobolectricTestRunner.RobolectricFrameworkMethod;
 import org.robolectric.RobolectricTestRunnerTest.TestWithBrokenAppCreate.MyTestApplication;
-import org.robolectric.android.internal.AndroidBridge;
 import org.robolectric.annotation.Config;
+import org.robolectric.internal.AndroidSandbox;
 import org.robolectric.internal.Bridge;
 import org.robolectric.internal.SandboxFactory;
 import org.robolectric.internal.SdkConfig;
-import org.robolectric.internal.SdkEnvironment;
 import org.robolectric.manifest.AndroidManifest;
 import org.robolectric.util.PerfStatsCollector.Metric;
 import org.robolectric.util.PerfStatsReporter;
@@ -107,10 +106,10 @@ public class RobolectricTestRunnerTest {
           protected SandboxFactory getSandboxFactory() {
             return new SandboxFactory() {
               @Override
-              protected SdkEnvironment createSdkEnvironment(SdkConfig sdkConfig,
+              protected AndroidSandbox createSandbox(SdkConfig sdkConfig,
                   boolean useLegacyResources, ClassLoader robolectricClassLoader,
                   ApkLoader apkLoader) {
-                return new SdkEnvironment(sdkConfig, useLegacyResources, robolectricClassLoader,
+                return new AndroidSandbox(sdkConfig, useLegacyResources, robolectricClassLoader,
                     apkLoader) {
                   @Override
                   protected Bridge getBridge() {
