@@ -329,7 +329,8 @@ public class RobolectricTestRunner extends SandboxTestRunner<SdkEnvironment> {
     RobolectricFrameworkMethod roboMethod = (RobolectricFrameworkMethod) method;
     SdkConfig sdkConfig = roboMethod.sdkConfig;
     return getSandboxFactory().getSdkEnvironment(
-        createClassLoaderConfig(method), sdkConfig, roboMethod.isLegacy(), getJarResolver());
+        createClassLoaderConfig(method), sdkConfig, roboMethod.isLegacy(), getJarResolver(),
+        apkLoader);
   }
 
   protected SandboxFactory getSandboxFactory() {
@@ -358,13 +359,10 @@ public class RobolectricTestRunner extends SandboxTestRunner<SdkEnvironment> {
           "[Robolectric] NOTICE: legacy resources mode is deprecated; see http://robolectric.org/migrating/#migrating-to-40");
     }
 
-//    roboMethod.parallelUniverseInterface = getHooksInterface(sdkEnvironment);
     Class<TestLifecycle> cl = sdkEnvironment.bootstrappedClass(getTestLifecycleClass());
     roboMethod.testLifecycle = ReflectionHelpers.newInstance(cl);
 
-//    roboMethod.parallelUniverseInterface.setSdkConfig(sdkConfig);
-
-    sdkEnvironment.initialize(apkLoader, roboMethod);
+    sdkEnvironment.initialize(roboMethod);
 
     roboMethod.testLifecycle.beforeTest(bootstrappedMethod);
   }
@@ -601,7 +599,6 @@ public class RobolectricTestRunner extends SandboxTestRunner<SdkEnvironment> {
 
     private boolean includeVariantMarkersInTestName = true;
     TestLifecycle testLifecycle;
-//    ParallelUniverseInterface parallelUniverseInterface;
     SdkEnvironment sdkEnvironment;
 
     RobolectricFrameworkMethod(

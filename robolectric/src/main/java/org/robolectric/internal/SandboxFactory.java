@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import javax.annotation.Nonnull;
+import org.robolectric.ApkLoader;
 import org.robolectric.internal.bytecode.InstrumentationConfiguration;
 import org.robolectric.internal.bytecode.SandboxClassLoader;
 import org.robolectric.internal.dependency.DependencyResolver;
@@ -30,7 +31,8 @@ public class SandboxFactory {
 
   public synchronized SdkEnvironment getSdkEnvironment(
       InstrumentationConfiguration instrumentationConfig, SdkConfig sdkConfig,
-      boolean useLegacyResources, DependencyResolver dependencyResolver) {
+      boolean useLegacyResources, DependencyResolver dependencyResolver,
+      ApkLoader apkLoader) {
     SandboxKey key = new SandboxKey(sdkConfig, instrumentationConfig, useLegacyResources);
 
     SdkEnvironment sdkEnvironment = sdkToEnvironment.get(key);
@@ -38,7 +40,7 @@ public class SandboxFactory {
       URL[] urls = dependencyResolver.getLocalArtifactUrls(sdkConfig.getAndroidSdkDependency());
 
       ClassLoader robolectricClassLoader = createClassLoader(instrumentationConfig, urls);
-      sdkEnvironment = createSdkEnvironment(sdkConfig, useLegacyResources, robolectricClassLoader);
+      sdkEnvironment = createSdkEnvironment(sdkConfig, useLegacyResources, robolectricClassLoader, apkLoader);
 
       sdkToEnvironment.put(key, sdkEnvironment);
     }
@@ -46,8 +48,8 @@ public class SandboxFactory {
   }
 
   protected SdkEnvironment createSdkEnvironment(SdkConfig sdkConfig, boolean useLegacyResources,
-      ClassLoader robolectricClassLoader) {
-    return new SdkEnvironment(sdkConfig, useLegacyResources, robolectricClassLoader);
+      ClassLoader robolectricClassLoader, ApkLoader apkLoader) {
+    return new SdkEnvironment(sdkConfig, useLegacyResources, robolectricClassLoader, apkLoader);
   }
 
   @Nonnull
