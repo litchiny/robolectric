@@ -557,8 +557,8 @@ public class RobolectricTestRunner extends SandboxTestRunner<AndroidSandbox> {
     }
 
     @Override
-    protected Statement methodBlock(FrameworkMethod method) {
-      Statement statement = super.methodBlock(method);
+    protected Statement methodInvoker(FrameworkMethod method, Object test) {
+      final Statement invoker = super.methodInvoker(method, test);
       final RobolectricFrameworkMethod roboMethod = (RobolectricFrameworkMethod) this.frameworkMethod;
       return new Statement() {
         @Override
@@ -566,7 +566,7 @@ public class RobolectricTestRunner extends SandboxTestRunner<AndroidSandbox> {
           Throwable[] ts = new Throwable[1];
           roboMethod.androidSandbox.executeSynchronously(() -> {
             try {
-              statement.evaluate();
+              invoker.evaluate();
             } catch (Throwable t) {
               ts[0] = t;
             }

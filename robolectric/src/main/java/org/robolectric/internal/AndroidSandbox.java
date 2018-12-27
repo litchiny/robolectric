@@ -81,7 +81,7 @@ public class AndroidSandbox extends Sandbox {
 
   public void initialize(MethodConfig methodConfig) {
     executeSynchronously(() ->
-        bridge.setUpApplicationState(
+        getBridge().setUpApplicationState(
             methodConfig.getMethod(),
             methodConfig.getConfig(),
             methodConfig.getAppManifest(),

@@ -11,6 +11,7 @@ import java.util.concurrent.Callable;
 import javax.annotation.Nonnull;
 import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.InitializationError;
+import org.robolectric.android.internal.AndroidBridge.BridgeFactory;
 import org.robolectric.annotation.Config;
 import org.robolectric.internal.AndroidSandbox;
 import org.robolectric.internal.Bridge;
@@ -65,12 +66,19 @@ public class BootstrapDeferringRobolectricTestRunner extends RobolectricTestRunn
 
   }
 
-  public static class MyTestLifecycle extends DefaultTestLifecycle {
+  public static class MyTestLifecycle implements TestLifecycle {
 
     @Override
     public void prepareTest(Object test) {
-      super.prepareTest(test);
       inject(test, BootstrapWrapper.class, bootstrapWrapper);
+    }
+
+    @Override
+    public void beforeTest(Method method) {
+    }
+
+    @Override
+    public void afterTest(Method method) {
     }
 
     private <T> void inject(Object instance, Class<T> clazz, T value) {
@@ -164,18 +172,21 @@ public class BootstrapDeferringRobolectricTestRunner extends RobolectricTestRunn
     }
 
     @Override
-    protected Bridge getBridge() {
-      Bridge parallelUniverse = super.getBridge();
-      try {
-        Bridge wrapper = bootstrappedClass(BootstrapWrapper.class)
-            .asSubclass(Bridge.class)
-            .getConstructor(Bridge.class)
-            .newInstance(parallelUniverse);
-        myBootstrapWrapper = (BootstrapWrapper) wrapper;
-        return wrapper;
-      } catch (ReflectiveOperationException e) {
-        throw new RuntimeException(e);
-      }
+    protected BridgeFactory getBridgeFactory() {
+      BridgeFactory bridgeFactory = super.getBridgeFactory();
+      return (sdkConfig, legacyResourceMode, apkLoader) -> {
+        Bridge delegate = bridgeFactory.build(sdkConfig, legacyResourceMode, apkLoader);
+        try {
+          Bridge wrapper = bootstrappedClass(BootstrapWrapper.class)
+              .asSubclass(Bridge.class)
+              .getConstructor(Bridge.class)
+              .newInstance(delegate);
+          myBootstrapWrapper = (BootstrapWrapper) wrapper;
+          return wrapper;
+        } catch (ReflectiveOperationException e) {
+          throw new RuntimeException(e);
+        }
+      };
     }
   }
 }
