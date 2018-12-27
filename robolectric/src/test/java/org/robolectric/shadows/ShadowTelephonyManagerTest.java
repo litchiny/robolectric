@@ -34,8 +34,10 @@ import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.UiccSlotInfo;
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.junit.Before;
@@ -435,5 +437,16 @@ public class ShadowTelephonyManagerTest {
     shadowTelephonyManager.setSubscriberId(subscriberId);
 
     assertThat(shadowTelephonyManager.getSubscriberId()).isEqualTo(subscriberId);
+  }
+
+  @Test
+  @Config(minSdk = P)
+  public void getUiccSlotsInfo() {
+    UiccSlotInfo slotInfo1 = new UiccSlotInfo(true, true, null, 0, 0, true);
+    UiccSlotInfo slotInfo2 = new UiccSlotInfo(true, true, null, 0, 1, true);
+    UiccSlotInfo[] slotInfos = new UiccSlotInfo[] {slotInfo1, slotInfo2};
+    shadowTelephonyManager.setUiccSlotsInfo(slotInfos);
+
+    assertThat(shadowTelephonyManager.getUiccSlotsInfo()).isEqualTo(slotInfos);
   }
 }

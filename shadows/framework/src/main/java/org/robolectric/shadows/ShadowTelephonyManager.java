@@ -25,6 +25,7 @@ import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.UiccSlotInfo;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
 import com.google.common.base.Predicate;
@@ -83,6 +84,7 @@ public class ShadowTelephonyManager {
   private final Map<Integer, String> simCountryIsoMap = new HashMap<>();
   private int simCarrierId;
   private String subscriberId;
+  private UiccSlotInfo[] uiccSlotInfos;
 
   {
     resetSimStates();
@@ -284,6 +286,15 @@ public class ShadowTelephonyManager {
   @Implementation(minSdk = O)
   protected int getSimState(int slotIndex) {
     return simStates.get(slotIndex, TelephonyManager.SIM_STATE_UNKNOWN);
+  }
+
+  public void setUiccSlotsInfo(UiccSlotInfo[] uiccSlotsInfos) {
+    this.uiccSlotInfos = uiccSlotsInfos;
+  }
+
+  @Implementation(minSdk = P)
+  protected UiccSlotInfo[] getUiccSlotsInfo() {
+    return uiccSlotInfos;
   }
 
   /** Clears {@code slotIndex} to state mapping and resets to default state. */
