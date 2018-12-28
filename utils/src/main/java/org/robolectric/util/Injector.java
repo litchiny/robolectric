@@ -31,23 +31,25 @@ public class Injector {
   private final Map<Key, Provider<?>> providers = new HashMap<>();
   private final Map<Key, Class<?>> defaultImpls = new HashMap<>();
 
-  synchronized public <T> void register(Class<T> type, T instance) {
+  synchronized public <T> Injector register(Class<T> type, T instance) {
     providers.put(new Key(type), () -> instance);
+    return this;
   }
 
-  synchronized public <T> void register(Class<T> type, Class<? extends T> defaultClass) {
+  synchronized public <T> Injector register(Class<T> type, Class<? extends T> defaultClass) {
     registerInternal(new Key(type), defaultClass);
+    return this;
+  }
+
+  synchronized public <T> Injector registerDefault(Class<T> type, Class<? extends T> defaultClass) {
+    defaultImpls.put(new Key(type), defaultClass);
+    return this;
   }
 
   synchronized private <T> Provider<T> registerInternal(Key key, Class<? extends T> defaultClass) {
     Provider<T> provider = new MemoizingProvider<>(() -> inject(defaultClass));
     providers.put(key, provider);
     return provider;
-  }
-
-  synchronized public <T> void registerDefault(Class<T> type,
-      Class<? extends T> defaultClass) {
-    defaultImpls.put(new Key(type), defaultClass);
   }
 
   private <T> T inject(Class<? extends T> clazz) {
@@ -76,7 +78,12 @@ public class Injector {
         Class<?>[] paramTypes = injectCtor.getParameterTypes();
         for (int i = 0; i < paramTypes.length; i++) {
           Class<?> paramType = paramTypes[i];
-          params[i] = getInstance(paramType);
+          try {
+            params[i] = getInstance(paramType);
+          } catch (InjectionException e) {
+            throw new InjectionException(clazz,
+                "failed to inject " + paramType.getName() + " param", e);
+          }
         }
 
         return injectCtor.newInstance(params);
@@ -230,17 +237,4 @@ public class Injector {
     }
   }
 
-  public static class InjectionException extends RuntimeException {
-    public InjectionException(Class<?> clazz, String message, Throwable cause) {
-      super(clazz + ": " + message, cause);
-    }
-
-    public InjectionException(Class<?> clazz, String message) {
-      super(clazz + ": " + message);
-    }
-
-    public InjectionException(Class<?> clazz, Throwable cause) {
-      super(clazz + ": failed to inject");
-    }
-  }
 }
