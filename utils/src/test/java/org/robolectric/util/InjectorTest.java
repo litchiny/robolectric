@@ -1,10 +1,12 @@
 package org.robolectric.util;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.fail;
 
 import javax.inject.Inject;
 import org.junit.Before;
 import org.junit.Test;
+import org.robolectric.util.Injector.InjectionException;
 
 public class InjectorTest {
 
@@ -16,7 +18,7 @@ public class InjectorTest {
   }
 
   @Test
-  public void shouldProvideInstance() throws Exception {
+  public void whenImplSpecified_shouldProvideInstance() throws Exception {
     injector.register(Thing.class, MyThing.class);
 
     assertThat(injector.getInstance(Thing.class))
@@ -24,7 +26,7 @@ public class InjectorTest {
   }
 
   @Test
-  public void shouldUseSameInstances() throws Exception {
+  public void whenImplSpecified_shouldUseSameInstance() throws Exception {
     injector.register(Thing.class, MyThing.class);
 
     Thing thing = injector.getInstance(Thing.class);
@@ -32,27 +34,74 @@ public class InjectorTest {
         .isSameAs(thing);
   }
 
-  // see resources/META-INF/services/org.robolectric.utils.Thing
+  // specified in resources/META-INF/services/org.robolectric.util.Thing
   @Test
-  public void shouldUseImplementationRegisteredAsService() throws Exception {
+  public void whenServiceSpecified_shouldProvideInstance() throws Exception {
     assertThat(injector.getInstance(Thing.class))
         .isInstanceOf(ThingFromServiceConfig.class);
   }
 
+  // specified in resources/META-INF/services/org.robolectric.util.Thing
+  @Test
+  public void whenServiceSpecified_shouldUseSameInstance() throws Exception {
+    Thing thing = injector.getInstance(Thing.class);
+    assertThat(injector.getInstance(Thing.class))
+        .isSameAs(thing);
+  }
+
+  @Test
+  public void whenDefaultSpecified_shouldProvideInstance() throws Exception {
+    injector.registerDefault(Umm.class, MyUmm.class);
+
+    assertThat(injector.getInstance(Umm.class))
+        .isInstanceOf(MyUmm.class);
+  }
+
+  @Test
+  public void whenDefaultSpecified_shouldUseSameInstance() throws Exception {
+    Thing thing = injector.getInstance(Thing.class);
+    assertThat(injector.getInstance(Thing.class))
+        .isSameAs(thing);
+  }
+
+  @Test
+  public void whenNoImplOrServiceOrDefaultSpecified_shouldThrow() throws Exception {
+    try {
+      injector.getInstance(Umm.class);
+      fail();
+    } catch (InjectionException e) {
+      // ok
+    }
+  }
+
+  @Test
+  public void registerDefaultService_providesFallbackImplOnlyIfNoServiceSpecified()
+      throws Exception {
+    injector.registerDefault(Thing.class, MyThing.class);
+
+    assertThat(injector.getInstance(Thing.class))
+        .isInstanceOf(ThingFromServiceConfig.class);
+
+    injector.registerDefault(Umm.class, MyUmm.class);
+    assertThat(injector.getInstance(Thing.class))
+        .isInstanceOf(ThingFromServiceConfig.class);
+  }
+
+
   @Test
   public void shouldInjectConstructor() throws Exception {
     injector.register(Thing.class, MyThing.class);
-    injector.register(Err.class, MyErr.class);
+    injector.register(Umm.class, MyUmm.class);
 
-    Err err = injector.getInstance(Err.class);
-    assertThat(err).isNotNull();
-    assertThat(err).isInstanceOf(MyErr.class);
+    Umm umm = injector.getInstance(Umm.class);
+    assertThat(umm).isNotNull();
+    assertThat(umm).isInstanceOf(MyUmm.class);
 
-    MyErr myErr = (MyErr) err;
-    assertThat(myErr.thing).isNotNull();
-    assertThat(myErr.thing).isInstanceOf(MyThing.class);
+    MyUmm myUmm = (MyUmm) umm;
+    assertThat(myUmm.thing).isNotNull();
+    assertThat(myUmm.thing).isInstanceOf(MyThing.class);
 
-    assertThat(myErr.thing).isSameAs(injector.getInstance(Thing.class));
+    assertThat(myUmm.thing).isSameAs(injector.getInstance(Thing.class));
   }
 
   /////////////////////////////
@@ -65,16 +114,16 @@ public class InjectorTest {
 
   }
 
-  private interface Err {
+  private interface Umm {
 
   }
 
-  public static class MyErr implements Err {
+  public static class MyUmm implements Umm {
 
     private final Thing thing;
 
     @Inject
-    MyErr(Thing thing) {
+    MyUmm(Thing thing) {
       this.thing = thing;
     }
   }

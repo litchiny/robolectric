@@ -1,14 +1,12 @@
 package org.robolectric.util;
 
-import static com.sun.xml.internal.fastinfoset.vocab.Vocabulary.PREFIX;
-
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -17,17 +15,39 @@ import java.util.Map;
 import java.util.Objects;
 import javax.inject.Inject;
 
+/**
+ * A super-simple dependency injection and plugin framework.
+ *
+ * Register default implementation classes using {@link #registerDefault(Class, Class)}.
+ *
+ * For interfaces lacking a default implementation, the injector will look for an implementation
+ * registered in the same way as {@link java.util.ServiceLoader} does.
+ */
 @SuppressWarnings("NewApi")
 public class Injector {
 
-  private final Map<Key, Provider<?>> providers = new HashMap<>();
+  private static final String PREFIX = "META-INF/services/";
 
-  synchronized public <T> void register(Class<T> type, Class<? extends T> defaultClass) {
-    providers.put(new Key(type), new MemoizingProvider<>(() -> inject(defaultClass)));
+  private final Map<Key, Provider<?>> providers = new HashMap<>();
+  private final Map<Key, Class<?>> defaultImpls = new HashMap<>();
+
+  synchronized public <T> void register(Class<T> type, T instance) {
+    providers.put(new Key(type), () -> instance);
   }
 
-  synchronized public <T> void registerDefaultService(Class<T> type,
+  synchronized public <T> void register(Class<T> type, Class<? extends T> defaultClass) {
+    registerInternal(new Key(type), defaultClass);
+  }
+
+  synchronized private <T> Provider<T> registerInternal(Key key, Class<? extends T> defaultClass) {
+    Provider<T> provider = new MemoizingProvider<>(() -> inject(defaultClass));
+    providers.put(key, provider);
+    return provider;
+  }
+
+  synchronized public <T> void registerDefault(Class<T> type,
       Class<? extends T> defaultClass) {
+    defaultImpls.put(new Key(type), defaultClass);
   }
 
   private <T> T inject(Class<? extends T> clazz) {
@@ -40,7 +60,7 @@ public class Injector {
           defaultCtor = (Constructor<T>) ctor;
         } else if (ctor.getAnnotation(Inject.class) != null) {
           if (injectCtor != null) {
-            throw new IllegalStateException("multiple @Inject constructors for " + clazz);
+            throw new InjectionException(clazz, "multiple @Inject constructors");
           }
           injectCtor = (Constructor<T>) ctor;
         }
@@ -62,31 +82,49 @@ public class Injector {
         return injectCtor.newInstance(params);
       }
 
-      throw new IllegalStateException("no default or @Inject constructor for " + clazz);
+      throw new InjectionException(clazz, "no default or @Inject constructor");
     } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-      throw new RuntimeException(e);
+      throw new InjectionException(clazz, e);
     }
   }
 
-  synchronized private <T> Provider<?> getProvider(Class<T> clazz) {
-    Provider<?> provider = providers.get(new Key(clazz));
-    if (provider == null) {
-      provider = findService(clazz);
-    }
-    return provider;
+  synchronized private <T> Provider<T> getProvider(Class<T> clazz) {
+    Key key = new Key(clazz);
+    Provider<?> provider = providers.computeIfAbsent(key, k -> new Provider<T>() {
+      @Override
+      synchronized public T provide() {
+        Class<? extends T> implClass = findService(clazz);
+
+        if (implClass == null) {
+          synchronized (Injector.this) {
+            implClass = (Class<? extends T>) defaultImpls.get(key);
+          }
+        }
+
+        if (implClass == null) {
+          throw new InjectionException(clazz, "no provider found");
+        }
+
+        // replace this with the found provider for future lookups...
+        Provider<T> tProvider;
+        tProvider = registerInternal(new Key(clazz), implClass);
+        return tProvider.provide();
+      }
+    });
+    return (Provider<T>) provider;
   }
 
   public <T> T getInstance(Class<T> clazz) {
     Provider<?> provider = getProvider(clazz);
 
     if (provider == null) {
-      throw new IllegalStateException("no provider registered for " + clazz);
+      throw new InjectionException(clazz, "no provider registered");
     }
 
     return ((Provider<T>) provider).provide();
   }
 
-  private <T> Provider<T> findService(Class<T> serviceType) {
+  private <T> Class<? extends T> findService(Class<T> serviceType) {
     ClassLoader loader = serviceType.getClassLoader();
     Enumeration<URL> configs;
     try {
@@ -96,8 +134,8 @@ public class Injector {
       } else {
         configs = loader.getResources(fullName);
       }
-    } catch (IOException x) {
-      throw new RuntimeException(serviceType + ": Error locating configuration files", x);
+    } catch (IOException e) {
+      throw new InjectionException(serviceType, "Error locating configuration files", e);
     }
 
     List<URL> urls = new ArrayList<>();
@@ -109,32 +147,37 @@ public class Injector {
     if (urls.isEmpty()) {
       return null;
     } else if (urls.size() > 1) {
-      throw new IllegalArgumentException(serviceType + ": too many implementations: " + urls);
+      throw new InjectionException(serviceType, "too many implementations: " + urls);
     }
 
     URL url = urls.get(0);
+    String className = readOnlyLine(serviceType, url);
+
+    try {
+      return (Class<T>) loader.loadClass(className);
+    } catch (ClassNotFoundException e) {
+      throw new InjectionException(serviceType, "no such implementation class", e);
+    }
+  }
+
+  private <T> String readOnlyLine(Class<T> serviceType, URL url) {
     String className = null;
-    try (BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream(), "utf-8"))) {
+    try (BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream(),
+        StandardCharsets.UTF_8))) {
       for (String line = in.readLine(); line != null; line = in.readLine()) {
         line = line.trim();
         if (!line.isEmpty() && !line.startsWith("#")) {
           if (className != null) {
-            throw new IllegalArgumentException(serviceType + ": too many implementations in " + url);
+            throw new InjectionException(serviceType, "too many implementations in " + url);
           }
 
           className = line;
         }
       }
     } catch (IOException x) {
-      throw new RuntimeException(serviceType + ": Error reading configuration file", x);
+      throw new InjectionException(serviceType, "Error reading configuration file", x);
     }
-
-    try {
-      Class<T> theClass = (Class<T>) loader.loadClass(className);
-      return () -> inject(theClass);
-    } catch (ClassNotFoundException e) {
-      throw new RuntimeException(serviceType + ": no such implementation class", e);
-    }
+    return className;
   }
 
   private static class Key {
@@ -184,6 +227,20 @@ public class Injector {
         delegate = null;
       }
       return instance;
+    }
+  }
+
+  public static class InjectionException extends RuntimeException {
+    public InjectionException(Class<?> clazz, String message, Throwable cause) {
+      super(clazz + ": " + message, cause);
+    }
+
+    public InjectionException(Class<?> clazz, String message) {
+      super(clazz + ": " + message);
+    }
+
+    public InjectionException(Class<?> clazz, Throwable cause) {
+      super(clazz + ": failed to inject");
     }
   }
 }
