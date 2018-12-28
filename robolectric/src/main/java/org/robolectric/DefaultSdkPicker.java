@@ -14,7 +14,6 @@ import javax.annotation.Nullable;
 import javax.inject.Inject;
 import org.robolectric.annotation.Config;
 import org.robolectric.annotation.internal.ConfigUtils;
-import org.robolectric.internal.DefaultSdkProvider;
 import org.robolectric.internal.SdkConfig;
 import org.robolectric.internal.SdkProvider;
 
@@ -27,12 +26,9 @@ public class DefaultSdkPicker implements SdkPicker {
 
   @Inject
   public DefaultSdkPicker(SdkProvider sdkProvider, Properties systemProperties) {
-    this(
-        sdkProvider, sdkProvider.getSupportedSdkConfigs(),
-        DefaultSdkPicker.enumerateEnabledSdks(sdkProvider,
-            systemProperties.getProperty("robolectric.enabledSdks")));
+    this(sdkProvider, sdkProvider.getSupportedSdkConfigs(),
+        enumerateEnabledSdks(sdkProvider, systemProperties.getProperty("robolectric.enabledSdks")));
   }
-
 
   public DefaultSdkPicker(
       @Nonnull SdkProvider sdkProvider,

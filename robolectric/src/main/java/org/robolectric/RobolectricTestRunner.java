@@ -69,7 +69,6 @@ public class RobolectricTestRunner extends SandboxTestRunner {
   private static final Map<ManifestIdentifier, AndroidManifest> appManifestsCache = new HashMap<>();
 
   private ServiceLoader<ShadowProvider> providers;
-  private transient DependencyResolver dependencyResolver;
   private final ResourcesMode resourcesMode = getResourcesMode();
   private boolean alwaysIncludeVariantMarkersInName =
       Boolean.parseBoolean(
@@ -89,7 +88,6 @@ public class RobolectricTestRunner extends SandboxTestRunner {
         .registerDefault(ApkLoader.class, ApkLoader.class)
         .registerDefault(SandboxFactory.class, SandboxFactory.class)
         .registerDefault(DependencyResolver.class, LegacyDependencyResolver.class)
-        .registerDefault(ShadowProviders.class, ShadowProviders.class)
         .registerDefault(SdkProvider.class, DefaultSdkProvider.class)
         .registerDefault(Ctx.class, Ctx.class);
   }
@@ -638,7 +636,4 @@ public class RobolectricTestRunner extends SandboxTestRunner {
     }
   }
 
-  public static class ShadowProviders {
-
-  }
 }
