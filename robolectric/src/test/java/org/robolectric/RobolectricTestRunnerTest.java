@@ -123,7 +123,6 @@ public class RobolectricTestRunnerTest {
   public void failureInAppOnCreateDoesntBreakAllTests() throws Exception {
     RobolectricTestRunner runner = new MyRobolectricTestRunner(TestWithBrokenAppCreate.class);
     runner.run(notifier);
-    System.out.println("events = " + events);
     assertThat(events)
         .containsExactly(
             "failure: fake error in application.onCreate",

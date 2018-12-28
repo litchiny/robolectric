@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import javax.annotation.Nonnull;
+import org.robolectric.internal.dependency.DependencyJar;
 
 @SuppressWarnings("NewApi")
 public class DefaultSdkProvider implements SdkProvider {
@@ -58,8 +59,13 @@ public class DefaultSdkProvider implements SdkProvider {
   private static SdkConfig staticGetSdkConfig(int apiLevel) {
     final SdkVersion sdkVersion = SUPPORTED_APIS.get(apiLevel);
     if (sdkVersion == null) {
-      throw new UnsupportedOperationException(
-          "Robolectric does not support API level " + apiLevel + ".");
+      return new SdkConfig(apiLevel, null, null, null) {
+        @Override
+        public DependencyJar getAndroidSdkDependency() {
+          throw new UnsupportedOperationException(
+              "Robolectric does not support API level " + apiLevel + ".");
+        }
+      };
     }
 
     return new SdkConfig(apiLevel, sdkVersion.androidVersion, sdkVersion.robolectricVersion,
